@@ -45,6 +45,11 @@ SHEET_TABS = {
     1: "Zipper",   # Company 1 -> Zipper tab
     3: "Metal",    # Company 3 -> Metal tab
 }
+# Rows to preserve (not touched during clear/paste)
+PROTECTED_ROWS = {
+    1: 27,  # Zipper sheet: row 27
+    3: 10,  # Metal sheet: row 10
+}
 
 # DPR Date: yesterday
 YESTERDAY = (date.today() - timedelta(days=1)).isoformat()
@@ -233,11 +238,24 @@ if __name__ == "__main__":
                             tab_name = SHEET_TABS.get(cid)
                             if tab_name:
                                 worksheet = sheet.worksheet(tab_name)
-                                # Delete all previous data
+                                protected_row_num = PROTECTED_ROWS.get(cid)
+
+                                # Save protected row (formulas preserved)
+                                saved_row = None
+                                if protected_row_num:
+                                    saved_row = worksheet.row_values(protected_row_num, value_render_option="FORMULA")
+                                    print(f"🔒 Saved protected row {protected_row_num}")
+
+                                # Clear all values only
                                 worksheet.clear()
-                                worksheet.resize(rows=1, cols=1)
+
                                 # Paste data
                                 set_with_dataframe(worksheet, df)
+
+                                # Restore protected row
+                                if protected_row_num and saved_row:
+                                    worksheet.update(f"A{protected_row_num}", [saved_row], value_input_option="USER_ENTERED")
+                                    print(f"🔒 Protected row {protected_row_num} restored")
                                 print(f"✅ DPR pasted to Google Sheet tab: {tab_name}")
                             else:
                                 print(f"⚠️ No tab configured for company {cid}")
