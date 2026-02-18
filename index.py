@@ -189,15 +189,9 @@ def download_dpr_report(company_id, wizard_id, date_from, date_to):
         "active_ids": [wizard_id]
     })
 
-    report_url = f"/report/xlsx/taps_manufacturing.packing_invoice?options={urllib.parse.quote(options)}&context={urllib.parse.quote(context)}"
+    report_url = f"{ODOO_URL}/report/xlsx/taps_manufacturing.packing_invoice/{wizard_id}?options={urllib.parse.quote(options)}&context={urllib.parse.quote(context)}"
 
-    data = {
-        "data": json.dumps([report_url, "xlsx"]),
-        "context": json.dumps({"lang": "en_US", "tz": "Asia/Dhaka", "uid": USER_ID, "allowed_company_ids": [company_id]}),
-        "token": "dummy-because-api-expects-one",
-    }
-
-    r = session.post(f"{ODOO_URL}/report/download", data=data)
+    r = session.get(report_url)
     if r.status_code != 200:
         print(f"❌ Download failed (HTTP {r.status_code}): {r.text[:500]}")
         return None
