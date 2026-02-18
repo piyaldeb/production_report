@@ -20,13 +20,17 @@ DB = os.getenv("ODOO_DB")
 USERNAME = os.getenv("ODOO_USERNAME")
 PASSWORD = os.getenv("ODOO_PASSWORD")
 
-# Google credentials from base64 encoded secret
+# Google credentials from secret (raw JSON or base64 encoded)
 import base64
 GOOGLE_CREDS_BASE64 = os.getenv("GOOGLE_CREDS_BASE64")
 if GOOGLE_CREDS_BASE64:
-    # Fix padding if missing
-    padded = GOOGLE_CREDS_BASE64 + "=" * (-len(GOOGLE_CREDS_BASE64) % 4)
-    creds_json = base64.b64decode(padded).decode("utf-8")
+    # Try raw JSON first, fall back to base64 decoding
+    stripped = GOOGLE_CREDS_BASE64.strip()
+    if stripped.startswith("{"):
+        creds_json = stripped
+    else:
+        padded = stripped + "=" * (-len(stripped) % 4)
+        creds_json = base64.b64decode(padded).decode("utf-8")
     with open("service_account.json", "w") as f:
         f.write(creds_json)
 
