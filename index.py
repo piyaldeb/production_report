@@ -172,6 +172,7 @@ def generate_dpr_report(company_id, wizard_id):
         print(f"❌ Error generating DPR report for {company_id}: {r.json()['error']}")
         return None
     print(f"⚡ DPR report generated for wizard {wizard_id} (company {company_id})")
+    print(f"📎 Generate result: {json.dumps(result, indent=2)[:1000]}")
     return result
 
 
@@ -196,8 +197,10 @@ def download_dpr_report(company_id, wizard_id, date_from, date_to):
         "token": "dummy-because-api-expects-one",
     }
 
-    r = retry_request(session.post, f"{ODOO_URL}/report/download", data=data)
-    r.raise_for_status()
+    r = session.post(f"{ODOO_URL}/report/download", data=data)
+    if r.status_code != 200:
+        print(f"❌ Download failed (HTTP {r.status_code}): {r.text[:500]}")
+        return None
 
     if r.headers.get("content-type", "").startswith("application/vnd.openxmlformats"):
         print(f"📥 DPR report downloaded for company {company_id}")
