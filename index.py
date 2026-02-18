@@ -5,6 +5,7 @@ import sys
 import os
 from datetime import date, datetime, timedelta
 import gspread
+from gspread_dataframe import set_with_dataframe
 import pandas as pd
 import io
 from dotenv import load_dotenv
@@ -235,13 +236,8 @@ if __name__ == "__main__":
                                 # Delete all previous data
                                 worksheet.clear()
                                 worksheet.resize(rows=1, cols=1)
-                                # Prepare data: header + rows
-                                header = df.columns.tolist()
-                                rows = df.fillna("").astype(str).values.tolist()
-                                all_data = [header] + rows
-                                worksheet.resize(rows=len(all_data), cols=len(header))
-                                # Paste with USER_ENTERED so formulas are interpreted
-                                worksheet.update("A1", all_data, value_input_option="USER_ENTERED")
+                                # Paste data
+                                set_with_dataframe(worksheet, df)
                                 print(f"✅ DPR pasted to Google Sheet tab: {tab_name}")
                             else:
                                 print(f"⚠️ No tab configured for company {cid}")
