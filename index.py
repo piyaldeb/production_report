@@ -24,7 +24,9 @@ PASSWORD = os.getenv("ODOO_PASSWORD")
 import base64
 GOOGLE_CREDS_BASE64 = os.getenv("GOOGLE_CREDS_BASE64")
 if GOOGLE_CREDS_BASE64:
-    creds_json = base64.b64decode(GOOGLE_CREDS_BASE64).decode("utf-8")
+    # Fix padding if missing
+    padded = GOOGLE_CREDS_BASE64 + "=" * (-len(GOOGLE_CREDS_BASE64) % 4)
+    creds_json = base64.b64decode(padded).decode("utf-8")
     with open("service_account.json", "w") as f:
         f.write(creds_json)
 
