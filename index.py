@@ -4,6 +4,7 @@ import logging
 import sys
 import os
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 import gspread
 from gspread_dataframe import set_with_dataframe
 import pandas as pd
@@ -51,8 +52,9 @@ PROTECTED_ROWS = {
     3: 10,  # Metal sheet: row 10
 }
 
-# DPR Date: yesterday
-YESTERDAY = (date.today() - timedelta(days=1)).isoformat()
+# DPR Date: yesterday (calculated in Dhaka timezone, not UTC)
+_dhaka_tz = ZoneInfo("Asia/Dhaka")
+YESTERDAY = (datetime.now(_dhaka_tz).date() - timedelta(days=1)).isoformat()
 
 session = requests.Session()
 USER_ID = None
