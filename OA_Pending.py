@@ -185,10 +185,10 @@ def download_oa_pending_xlsx(company_id):
                         "lang": "en_US",
                         "tz": "Asia/Dhaka",
                         "uid": USER_ID,
-                        "allowed_company_ids": [company_id],
+                        "allowed_company_ids": [3, 1, 2, 4],
                     },
                     "count_limit": 100000,
-                    "domain": DOMAIN,
+                    "domain": DOMAIN + [["company_id", "=", company_id]],
                 },
             },
         }
