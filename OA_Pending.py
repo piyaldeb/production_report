@@ -108,165 +108,122 @@ def switch_company(company_id):
     return True
 
 
-# ========= DOWNLOAD OA PENDING XLSX ==========
+# ========= FETCH OA PENDING VIA JSON-RPC (no CSRF needed) ==========
+MANY2ONE_FIELDS = [
+    "bottom", "buying_house", "company_id", "partner_id", "payment_term",
+    "pinbox", "product_template_id", "product_id", "product_uom",
+    "resign", "slider", "tape", "top", "wire", "oa_id",
+]
+
+SIMPLE_FIELDS = [
+    "assembly_done", "b_part", "back_part", "balance_qty", "botomwire_con",
+    "bottom_stock", "bot_plat_plan_end", "bot_plat_output", "bot_plat_plan_qty",
+    "bpl_rec_plan_qty", "bot_plat_plan", "buyer_name", "c_part", "closing_date",
+    "chain_making_done", "d_part", "diping_done", "done_qty", "dy_rec_plan_qty",
+    "dyeing_output", "dyeing_plan", "dyeing_plan_due", "dyeing_plan_end",
+    "dyeing_plan_qty", "dyeing_qc_pass", "exp_close_date", "validity_date",
+    "finish", "finish_ref", "shade_name", "gmt", "fg_categ_type", "fg_categ_group",
+    "lead_time", "logo", "logoref", "logo_type", "num_of_lots", "numberoftop",
+    "oa_total_balance", "oa_total_qty", "date_order", "packing_done",
+    "pin_plat_plan_end", "pin_plat_output", "pin_plat_plan_qty", "ppl_rec_plan_qty",
+    "pin_plat_plan", "pinbox_con", "pinbox_stock", "plan_ids",
+    "plating_plan_end", "plating_output", "plating_plan_qty", "pl_rec_plan_qty",
+    "plating_plan", "product_code", "product_uom_qty", "resign_stock",
+    "is_revised", "revision_no", "revised_status", "shade_code", "shade",
+    "shade_ref", "shade_ref_2", "shade_ref_3", "shape", "shapefin",
+    "sizecm", "sizein", "sizemm", "slidercodesfg", "sli_asmbl_output",
+    "sli_asmbl_plan_end", "sli_asmbl_plan_qty", "sli_asmbl_plan", "sass_rec_plan_qty",
+    "slider_con", "slider_stock", "st_lead_time", "state", "style",
+    "tape_con", "tape_stock", "tbwire_con", "top_plat_plan_end", "top_plat_output",
+    "top_plat_plan_qty", "tpl_rec_plan_qty", "top_plat_plan", "top_stock",
+    "topbottom", "topwire_con", "wire_con", "wire_stock",
+]
+
+DOMAIN = [
+    "&", "&",
+    ["oa_total_balance", ">", 0],
+    ["oa_id", "!=", False],
+    ["state", "not in", ["closed", "cancel", "hold"]],
+]
+
+
 def download_oa_pending_xlsx(company_id):
     """
-    Downloads OA Pending report as XLSX via /web/export/xlsx for the given company.
-    Domain: oa_total_balance > 0, oa_id != False, state not in [closed, cancel, hold]
-    Ordered by date_order asc.
+    Fetches OA Pending records via web_search_read (JSON-RPC, no CSRF),
+    paginates through all results, and returns Excel bytes.
     """
-    export_fields = [
-        {"name": "assembly_done", "label": "Assembly Output", "type": "float"},
-        {"name": "b_part", "label": "B Part", "type": "text"},
-        {"name": "back_part", "label": "Back Part", "type": "text"},
-        {"name": "balance_qty", "label": "Balance", "type": "float"},
-        {"name": "botomwire_con", "label": "Botomwire C.", "type": "float"},
-        {"name": "bottom", "label": "Bottom", "type": "many2one"},
-        {"name": "bottom_stock", "label": "Bottom Stock", "type": "float"},
-        {"name": "bot_plat_plan_end", "label": "Btm Plat/Paint End", "type": "datetime"},
-        {"name": "bot_plat_output", "label": "Btm Plat/Paint Output", "type": "float"},
-        {"name": "bot_plat_plan_qty", "label": "Btm Plat/Paint Plan Qty", "type": "float"},
-        {"name": "bpl_rec_plan_qty", "label": "Btm Plat/Paint Recplan Qty", "type": "float"},
-        {"name": "bot_plat_plan", "label": "Btm Plat/Paint Start", "type": "datetime"},
-        {"name": "buying_house", "label": "Buyeing House", "type": "many2one"},
-        {"name": "buyer_name", "label": "Buyer", "type": "char"},
-        {"name": "c_part", "label": "C Part", "type": "text"},
-        {"name": "closing_date", "label": "Closing Date", "type": "datetime"},
-        {"name": "chain_making_done", "label": "CM Output", "type": "float"},
-        {"name": "company_id", "label": "Company", "type": "many2one"},
-        {"name": "partner_id", "label": "Customer", "type": "many2one"},
-        {"name": "d_part", "label": "D Part", "type": "text"},
-        {"name": "diping_done", "label": "Dipping Output", "type": "float"},
-        {"name": "done_qty", "label": "Done Qty", "type": "float"},
-        {"name": "dy_rec_plan_qty", "label": "Dye Last Plan", "type": "float"},
-        {"name": "dyeing_output", "label": "Dye Output", "type": "float"},
-        {"name": "dyeing_plan", "label": "Dye Plan", "type": "datetime"},
-        {"name": "dyeing_plan_due", "label": "Dye Plan Due", "type": "float"},
-        {"name": "dyeing_plan_end", "label": "Dye Plan End", "type": "datetime"},
-        {"name": "dyeing_plan_qty", "label": "Dye Plan Qty", "type": "float"},
-        {"name": "dyeing_qc_pass", "label": "Dye QC Pass", "type": "float"},
-        {"name": "exp_close_date", "label": "Expected Closing Date", "type": "date"},
-        {"name": "validity_date", "label": "Expiration", "type": "date"},
-        {"name": "finish", "label": "Finish", "type": "char"},
-        {"name": "finish_ref", "label": "Finish Ref", "type": "text"},
-        {"name": "shade_name", "label": "Full Shade", "type": "text"},
-        {"name": "gmt", "label": "Gmt", "type": "text"},
-        {"name": "fg_categ_type", "label": "Item", "type": "char"},
-        {"name": "fg_categ_group", "label": "Item Group", "type": "char"},
-        {"name": "lead_time", "label": "Lead Time", "type": "integer"},
-        {"name": "logo", "label": "Logo", "type": "text"},
-        {"name": "logoref", "label": "Logo Ref", "type": "text"},
-        {"name": "logo_type", "label": "Logo Type", "type": "text"},
-        {"name": "num_of_lots", "label": "N. of Lots", "type": "integer"},
-        {"name": "numberoftop", "label": "N.Top", "type": "char"},
-        {"name": "oa_id", "label": "OA", "type": "many2one"},
-        {"name": "oa_total_balance", "label": "OA Balance", "type": "float"},
-        {"name": "oa_total_qty", "label": "OA Total Qty", "type": "float"},
-        {"name": "date_order", "label": "Order Date", "type": "datetime"},
-        {"name": "packing_done", "label": "Packing Output", "type": "float"},
-        {"name": "payment_term", "label": "Payment Term", "type": "many2one"},
-        {"name": "pin_plat_plan_end", "label": "Pbox Plat/Paint End", "type": "datetime"},
-        {"name": "pin_plat_output", "label": "Pbox Plat/Paint Output", "type": "float"},
-        {"name": "pin_plat_plan_qty", "label": "Pbox Plat/Paint Plan Qty", "type": "float"},
-        {"name": "ppl_rec_plan_qty", "label": "Pbox Plat/Paint Recplan Qty", "type": "float"},
-        {"name": "pin_plat_plan", "label": "Pbox Plat/Paint Start", "type": "datetime"},
-        {"name": "pinbox", "label": "Pinbox", "type": "many2one"},
-        {"name": "pinbox_con", "label": "Pinbox C.", "type": "float"},
-        {"name": "pinbox_stock", "label": "Pinbox Stock", "type": "float"},
-        {"name": "plan_ids", "label": "Plan Ids", "type": "char"},
-        {"name": "plating_plan_end", "label": "Plat/Paint End", "type": "datetime"},
-        {"name": "plating_output", "label": "Plat/Paint Output", "type": "float"},
-        {"name": "plating_plan_qty", "label": "Plat/Paint Plan Qty", "type": "float"},
-        {"name": "pl_rec_plan_qty", "label": "Plat/Paint Rceplan Qty", "type": "float"},
-        {"name": "plating_plan", "label": "Plat/Paint Start", "type": "datetime"},
-        {"name": "product_template_id", "label": "Product", "type": "many2one"},
-        {"name": "product_code", "label": "Product Code", "type": "text"},
-        {"name": "product_id", "label": "Product Id", "type": "many2one"},
-        {"name": "product_uom_qty", "label": "Quantity", "type": "float"},
-        {"name": "resign", "label": "Resign", "type": "many2one"},
-        {"name": "resign_stock", "label": "Resign Stock", "type": "float"},
-        {"name": "is_revised", "label": "Revision", "type": "boolean"},
-        {"name": "revision_no", "label": "Revision No", "type": "char"},
-        {"name": "revised_status", "label": "Revision Status", "type": "selection"},
-        {"name": "slider", "label": "RM Slider", "type": "many2one"},
-        {"name": "shade_code", "label": "Shade Code", "type": "text"},
-        {"name": "shade", "label": "Shade Name", "type": "text"},
-        {"name": "shade_ref", "label": "Shade Ref 1", "type": "text"},
-        {"name": "shade_ref_2", "label": "Shade Ref 2", "type": "text"},
-        {"name": "shade_ref_3", "label": "Shade Ref 3", "type": "text"},
-        {"name": "shape", "label": "Shape", "type": "text"},
-        {"name": "shapefin", "label": "Shape Finish", "type": "text"},
-        {"name": "sizecm", "label": "Size (CM)", "type": "char"},
-        {"name": "sizein", "label": "Size (Inch)", "type": "char"},
-        {"name": "sizemm", "label": "Size (MM)", "type": "char"},
-        {"name": "slidercodesfg", "label": "Slider", "type": "char"},
-        {"name": "sli_asmbl_output", "label": "Slider Asmbl Output", "type": "float"},
-        {"name": "sli_asmbl_plan_end", "label": "Slider Asmbl Plan End", "type": "datetime"},
-        {"name": "sli_asmbl_plan_qty", "label": "Slider Asmbl Plan Qty", "type": "float"},
-        {"name": "sli_asmbl_plan", "label": "Slider Asmbl Plan Start", "type": "datetime"},
-        {"name": "sass_rec_plan_qty", "label": "Slider Asmbl Rceplan Qty", "type": "float"},
-        {"name": "slider_con", "label": "Slider C.", "type": "float"},
-        {"name": "slider_stock", "label": "Slider Stock", "type": "float"},
-        {"name": "st_lead_time", "label": "Standard Lead", "type": "integer"},
-        {"name": "state", "label": "State", "type": "selection"},
-        {"name": "style", "label": "Style", "type": "text"},
-        {"name": "tape", "label": "Tape", "type": "many2one"},
-        {"name": "tape_con", "label": "Tape C.", "type": "float"},
-        {"name": "tape_stock", "label": "Tape Stock", "type": "float"},
-        {"name": "tbwire_con", "label": "TBwire C.", "type": "float"},
-        {"name": "top", "label": "Top", "type": "many2one"},
-        {"name": "top_plat_plan_end", "label": "Top Plat/Paint End", "type": "datetime"},
-        {"name": "top_plat_output", "label": "Top Plat/Paint Output", "type": "float"},
-        {"name": "top_plat_plan_qty", "label": "Top Plat/Paint Plan Qty", "type": "float"},
-        {"name": "tpl_rec_plan_qty", "label": "Top Plat/Paint Recplan Qty", "type": "float"},
-        {"name": "top_plat_plan", "label": "Top Plat/Paint Start", "type": "datetime"},
-        {"name": "top_stock", "label": "Top Stock", "type": "float"},
-        {"name": "topbottom", "label": "Top/Bottom", "type": "char"},
-        {"name": "topwire_con", "label": "Topwire C.", "type": "float"},
-        {"name": "product_uom", "label": "Unit", "type": "many2one"},
-        {"name": "wire", "label": "Wire", "type": "many2one"},
-        {"name": "wire_con", "label": "Wire C.", "type": "float"},
-        {"name": "wire_stock", "label": "Wire Stock", "type": "float"},
-    ]
+    specification = {f: {"fields": {"display_name": {}}} for f in MANY2ONE_FIELDS}
+    specification.update({f: {} for f in SIMPLE_FIELDS})
 
-    export_data = {
-        "import_compat": False,
-        "context": {
-            "lang": "en_US",
-            "tz": "Asia/Dhaka",
-            "uid": USER_ID,
-            "allowed_company_ids": [company_id],
-            "order": "date_order asc",
-        },
-        "domain": [
-            "&", "&",
-            ["oa_total_balance", ">", 0],
-            ["oa_id", "!=", False],
-            ["state", "not in", ["closed", "cancel", "hold"]],
-        ],
-        "fields": export_fields,
-        "groupby": [],
-        "ids": False,
-        "model": "manufacturing.order",
-    }
+    all_records = []
+    offset = 0
+    limit = 500
 
-    r = retry_request(
-        session.post,
-        f"{ODOO_URL}/web/export/xlsx",
-        files={
-            "data": (None, json.dumps(export_data)),
-            "token": (None, "exportToken"),
-        },
-    )
+    while True:
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "call",
+            "params": {
+                "model": "manufacturing.order",
+                "method": "web_search_read",
+                "args": [],
+                "kwargs": {
+                    "specification": specification,
+                    "offset": offset,
+                    "order": "date_order asc",
+                    "limit": limit,
+                    "context": {
+                        "lang": "en_US",
+                        "tz": "Asia/Dhaka",
+                        "uid": USER_ID,
+                        "allowed_company_ids": [company_id],
+                    },
+                    "count_limit": 100000,
+                    "domain": DOMAIN,
+                },
+            },
+        }
+        r = retry_request(
+            session.post,
+            f"{ODOO_URL}/web/dataset/call_kw/manufacturing.order/web_search_read",
+            json=payload,
+        )
+        result = r.json().get("result", {})
+        records = result.get("records", [])
+        total = result.get("length", 0)
 
-    content_type = r.headers.get("content-type", "")
-    if "openxmlformats" in content_type or "octet-stream" in content_type:
-        print(f"📥 OA Pending XLSX downloaded ({len(r.content)} bytes)")
-        return r.content
-    else:
-        print(f"❌ Unexpected response content-type: {content_type}")
-        print(f"   Body: {r.text[:300]}")
+        if not records:
+            break
+
+        all_records.extend(records)
+        print(f"  Fetched {len(all_records)}/{total} records...")
+
+        if len(all_records) >= total:
+            break
+        offset += limit
+
+    if not all_records:
+        print("⚠️ No OA Pending records found")
         return None
+
+    print(f"Total records: {len(all_records)}")
+
+    # Flatten many2one dicts to display_name, remove internal id column
+    flat = []
+    for rec in all_records:
+        row = {}
+        for key, val in rec.items():
+            if key == "id":
+                continue
+            row[key] = val.get("display_name", "") if isinstance(val, dict) else val
+        flat.append(row)
+
+    df = pd.DataFrame(flat)
+    buf = io.BytesIO()
+    df.to_excel(buf, index=False)
+    buf.seek(0)
+    print(f"📥 OA Pending Excel built ({len(df)} rows)")
+    return buf.read()
 
 
 # ========= PASTE TO GOOGLE SHEETS ==========
