@@ -251,7 +251,7 @@ def download_oa_pending_xlsx(company_id):
     r = retry_request(
         session.post,
         f"{ODOO_URL}/web/export/xlsx",
-        data={"data": json.dumps(export_data)},
+        files={"data": (None, json.dumps(export_data))},
     )
 
     content_type = r.headers.get("content-type", "")
