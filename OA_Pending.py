@@ -158,11 +158,12 @@ DOMAIN = [
 
 def download_oa_pending_xlsx(company_id):
     """
-    Fetches OA Pending records via web_search_read (JSON-RPC, no CSRF),
+    Fetches OA Pending records via search_read (JSON-RPC, no CSRF),
     paginates through all results, and returns Excel bytes.
+    Many2one fields are returned as [id, name] tuples by search_read.
     """
-    specification = {f: {"fields": {"display_name": {}}} for f in MANY2ONE_FIELDS}
-    specification.update({f: {} for f in SIMPLE_FIELDS})
+    fields = MANY2ONE_FIELDS + SIMPLE_FIELDS
+    domain = DOMAIN + [["company_id", "=", company_id]]
 
     all_records = []
     offset = 0
@@ -174,40 +175,36 @@ def download_oa_pending_xlsx(company_id):
             "method": "call",
             "params": {
                 "model": "manufacturing.order",
-                "method": "web_search_read",
-                "args": [],
+                "method": "search_read",
+                "args": [domain],
                 "kwargs": {
-                    "specification": specification,
+                    "fields": fields,
                     "offset": offset,
-                    "order": "date_order asc",
                     "limit": limit,
+                    "order": "date_order asc",
                     "context": {
                         "lang": "en_US",
                         "tz": "Asia/Dhaka",
                         "uid": USER_ID,
                         "allowed_company_ids": [3, 1, 2, 4],
                     },
-                    "count_limit": 100000,
-                    "domain": DOMAIN + [["company_id", "=", company_id]],
                 },
             },
         }
         r = retry_request(
             session.post,
-            f"{ODOO_URL}/web/dataset/call_kw/manufacturing.order/web_search_read",
+            f"{ODOO_URL}/web/dataset/call_kw/manufacturing.order/search_read",
             json=payload,
         )
-        result = r.json().get("result", {})
-        records = result.get("records", [])
-        total = result.get("length", 0)
+        records = r.json().get("result", [])
 
         if not records:
             break
 
         all_records.extend(records)
-        print(f"  Fetched {len(all_records)}/{total} records...")
+        print(f"  Fetched {len(all_records)} records...")
 
-        if len(all_records) >= total:
+        if len(records) < limit:
             break
         offset += limit
 
@@ -217,15 +214,15 @@ def download_oa_pending_xlsx(company_id):
 
     print(f"Total records: {len(all_records)}")
 
-    # Flatten many2one dicts to display_name, drop internal id
+    # Flatten: many2one → [id, name] tuple → take name; False → ""
     flat = []
     for rec in all_records:
         row = {}
         for key, val in rec.items():
             if key == "id":
                 continue
-            if isinstance(val, dict):
-                row[key] = val.get("display_name", "")
+            if isinstance(val, (list, tuple)) and len(val) == 2:
+                row[key] = val[1]   # display name from [id, name]
             elif val is False:
                 row[key] = ""
             else:
