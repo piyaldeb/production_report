@@ -109,35 +109,44 @@ def switch_company(company_id):
 
 
 # ========= FETCH OA PENDING VIA JSON-RPC (no CSRF needed) ==========
-MANY2ONE_FIELDS = [
-    "bottom", "buying_house", "company_id", "partner_id", "payment_term",
-    "pinbox", "product_template_id", "product_id", "product_uom",
-    "resign", "slider", "tape", "top", "wire", "oa_id",
-]
+MANY2ONE_FIELDS = ["partner_id", "oa_id", "product_template_id", "tape", "pinbox"]
 
 SIMPLE_FIELDS = [
-    "assembly_done", "b_part", "back_part", "balance_qty", "botomwire_con",
-    "bottom_stock", "bot_plat_plan_end", "bot_plat_output", "bot_plat_plan_qty",
-    "bpl_rec_plan_qty", "bot_plat_plan", "buyer_name", "c_part", "closing_date",
-    "chain_making_done", "d_part", "diping_done", "done_qty", "dy_rec_plan_qty",
-    "dyeing_output", "dyeing_plan", "dyeing_plan_due", "dyeing_plan_end",
-    "dyeing_plan_qty", "dyeing_qc_pass", "exp_close_date", "validity_date",
-    "finish", "finish_ref", "shade_name", "gmt", "fg_categ_type", "fg_categ_group",
-    "lead_time", "logo", "logoref", "logo_type", "num_of_lots", "numberoftop",
-    "oa_total_balance", "oa_total_qty", "date_order", "packing_done",
-    "pin_plat_plan_end", "pin_plat_output", "pin_plat_plan_qty", "ppl_rec_plan_qty",
-    "pin_plat_plan", "pinbox_con", "pinbox_stock", "plan_ids",
-    "plating_plan_end", "plating_output", "plating_plan_qty", "pl_rec_plan_qty",
-    "plating_plan", "product_code", "product_uom_qty", "resign_stock",
-    "is_revised", "revision_no", "revised_status", "shade_code", "shade",
-    "shade_ref", "shade_ref_2", "shade_ref_3", "shape", "shapefin",
-    "sizecm", "sizein", "sizemm", "slidercodesfg", "sli_asmbl_output",
-    "sli_asmbl_plan_end", "sli_asmbl_plan_qty", "sli_asmbl_plan", "sass_rec_plan_qty",
-    "slider_con", "slider_stock", "st_lead_time", "state", "style",
-    "tape_con", "tape_stock", "tbwire_con", "top_plat_plan_end", "top_plat_output",
-    "top_plat_plan_qty", "tpl_rec_plan_qty", "top_plat_plan", "top_stock",
-    "topbottom", "topwire_con", "wire_con", "wire_stock",
+    "date_order", "fg_categ_type", "product_uom_qty", "done_qty", "balance_qty",
+    "sizein", "sizecm", "slidercodesfg", "topbottom",
+    "slider_con", "tape_con", "wire_con", "pinbox_con", "topwire_con", "botomwire_con",
 ]
+
+# Column rename + order to match the expected Excel layout
+COLUMN_ORDER = [
+    "Customer", "OA", "Order Date", "Item", "Product",
+    "Quantity", "Done Qty", "Balance",
+    "Size (Inch)", "Size (CM)", "Slider", "Dyed Tape", "Pin-Box Finish",
+    "Top/Bottom", "Slider C.", "Tape C.", "Wire C.", "Pinbox C.", "Topwire C.", "Botomwire C.",
+]
+
+COLUMN_RENAME = {
+    "partner_id":         "Customer",
+    "oa_id":              "OA",
+    "date_order":         "Order Date",
+    "fg_categ_type":      "Item",
+    "product_template_id":"Product",
+    "product_uom_qty":    "Quantity",
+    "done_qty":           "Done Qty",
+    "balance_qty":        "Balance",
+    "sizein":             "Size (Inch)",
+    "sizecm":             "Size (CM)",
+    "slidercodesfg":      "Slider",
+    "tape":               "Dyed Tape",
+    "pinbox":             "Pin-Box Finish",
+    "topbottom":          "Top/Bottom",
+    "slider_con":         "Slider C.",
+    "tape_con":           "Tape C.",
+    "wire_con":           "Wire C.",
+    "pinbox_con":         "Pinbox C.",
+    "topwire_con":        "Topwire C.",
+    "botomwire_con":      "Botomwire C.",
+}
 
 DOMAIN = [
     "&", "&",
@@ -208,7 +217,7 @@ def download_oa_pending_xlsx(company_id):
 
     print(f"Total records: {len(all_records)}")
 
-    # Flatten many2one dicts to display_name, remove internal id column
+    # Flatten many2one dicts to display_name, drop internal id
     flat = []
     for rec in all_records:
         row = {}
@@ -218,11 +227,11 @@ def download_oa_pending_xlsx(company_id):
             row[key] = val.get("display_name", "") if isinstance(val, dict) else val
         flat.append(row)
 
-    df = pd.DataFrame(flat)
+    df = pd.DataFrame(flat).rename(columns=COLUMN_RENAME)[COLUMN_ORDER]
     buf = io.BytesIO()
     df.to_excel(buf, index=False)
     buf.seek(0)
-    print(f"📥 OA Pending Excel built ({len(df)} rows)")
+    print(f"📥 OA Pending Excel built ({len(df)} rows, {len(df.columns)} columns)")
     return buf.read()
 
 
