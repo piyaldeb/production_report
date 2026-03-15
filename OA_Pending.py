@@ -57,6 +57,8 @@ def retry_request(method, url, max_retries=3, backoff=3, **kwargs):
     for attempt in range(1, max_retries + 1):
         try:
             r = method(url, **kwargs)
+            if not r.ok:
+                print(f"⚠️ HTTP {r.status_code} response body: {r.text[:500]}")
             r.raise_for_status()
             return r
         except RequestException as e:
@@ -251,7 +253,10 @@ def download_oa_pending_xlsx(company_id):
     r = retry_request(
         session.post,
         f"{ODOO_URL}/web/export/xlsx",
-        files={"data": (None, json.dumps(export_data))},
+        files={
+            "data": (None, json.dumps(export_data)),
+            "token": (None, "exportToken"),
+        },
     )
 
     content_type = r.headers.get("content-type", "")
