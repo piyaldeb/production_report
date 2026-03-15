@@ -224,7 +224,12 @@ def download_oa_pending_xlsx(company_id):
         for key, val in rec.items():
             if key == "id":
                 continue
-            row[key] = val.get("display_name", "") if isinstance(val, dict) else val
+            if isinstance(val, dict):
+                row[key] = val.get("display_name", "")
+            elif val is False:
+                row[key] = ""
+            else:
+                row[key] = val
         flat.append(row)
 
     df = pd.DataFrame(flat).rename(columns=COLUMN_RENAME)[COLUMN_ORDER]
