@@ -6,6 +6,8 @@ import os
 import time
 import io
 import base64
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from requests.exceptions import RequestException
 import gspread
@@ -88,8 +90,12 @@ PACKING_FIELDS = [
     "style", "balance_qty", "state",
 ]
 
+_four_months_ago = (datetime.now() - relativedelta(months=4)).strftime("%Y-%m-%d 00:00:00")
+
 DOMAIN = [
+    "&",
     ["oa_id", "!=", False],
+    ["date_order", ">=", _four_months_ago],
 ]
 
 
