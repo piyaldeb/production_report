@@ -93,9 +93,10 @@ PACKING_FIELDS = [
 _four_months_ago = (datetime.now() - relativedelta(months=4)).strftime("%Y-%m-%d 00:00:00")
 
 DOMAIN = [
-    "&",
+    "&", "&",
     ["oa_id", "!=", False],
     ["date_order", ">=", _four_months_ago],
+    ["company_id", "=", 1],
 ]
 
 
